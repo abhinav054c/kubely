@@ -1,0 +1,22 @@
+Usage:
+
+Each line represents a service in cluster.config represents a service, below are the available options
+name: Name of the service
+service: docker/python/node
+cpu_requests: Desired value of cpu resources
+cpu_limits: Max value of cpu resources
+mem_requests: Desired value of mem resources
+mem_limits: Max value of mem resources
+pod_requests: Desired replicacount
+pod_limits: Max replicacount 
+envs: comma separated list of environment files in order, value from the last file in the list takes over the value in the earlier files
+serviceport: Port at which the service is running in the container/cmd
+exposeport: Port at which you want to expose the service to cluster/internet
+public_gateway: true/false -> if we need public load balancer for the service
+allowed_ips: comma separated list of ips that are allowed to connect the public load balancer on the service port
+private_gateway: true/false -> if we need a service thats runs a local load balancer
+gitrepo: Github repo with the ssh url
+branch: branch to deploy
+commit: empty for the latest commit/commit hash for specific commit
+port: port of the application
+cmd: leave empty in case of docker-file

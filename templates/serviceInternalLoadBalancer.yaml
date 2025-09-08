@@ -1,0 +1,17 @@
+{{- if .Values.service.type "Cluster"}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "proxyllm.fullname" . }}
+  labels:
+    {{- include "proxyllm.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: tcp
+      name: http
+  selector:
+    {{- include "proxyllm.selectorLabels" . | nindent 4 }}
+{{- end }}

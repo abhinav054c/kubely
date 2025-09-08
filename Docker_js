@@ -1,0 +1,8 @@
+FROM node:18-alpine
+
+RUN mkdir /code
+WORKDIR /code
+COPY package*.json ./
+#COPY ./dependencies /code/dependencies
+RUN npm ci --silent
+COPY . /code/

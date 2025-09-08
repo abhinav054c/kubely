@@ -1,0 +1,21 @@
+{{- if .Values.service.type "Loadbalancer"}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "callmatic.fullname" . }}
+  labels:
+    {{- include "callmatic.labels" . | nindent 4 }}
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-security-groups: "{{ .Values.service.sgname }}"
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "callmatic.selectorLabels" . | nindent 4 }}
+{{ -end }}
