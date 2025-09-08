@@ -8,8 +8,9 @@ CONFIG_FILE="cluster.config"
 # AWS configuration
 AWS_REGION="ap-south-1"
 VPC_ID="vpc-06b196c8efd6b20b7"
-NAMESPACE_NAME="${NAMESPACE_NAME}"
+NAMESPACE_NAME="callmatic"
 DRY_RUN="false"
+AWS_ACCOUNT_ID=""
 
 # Parse params
 while [[ $# -gt 0 ]]; do
@@ -28,6 +29,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --namepace)
       NAMESPACE_NAME="$2"
+      shift 2
+      ;;
+    --account-id)
+      AWS_ACCOUNT_ID="$2"
       shift 2
       ;;
     --dry-run)
@@ -49,13 +54,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Echo params
-echo "Name: $name"
-echo "Service: $service"
-echo "Port: $port"
-echo "Public Gateway: $public_gateway"
-echo "Debug: $debug"
-
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
   echo "Error: Config file $CONFIG_FILE not found"
@@ -65,13 +63,21 @@ fi
 
 
 ECR_SECRET_NAME="ecr-pull-secret"
+ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
+echo "Creating Kubernetes namespace: ${NAMESPACE_NAME}..."
+kubectl create namespace "${NAMESPACE_NAME}" --dry-run=client -o yaml | kubectl apply -f -
+echo "Namespace created or already exists."
+echo "Fetching ECR authentication token..."
+ECR_PASSWORD=$(aws ecr get-login-password --region "${AWS_REGION}")
+echo "Creating or updating Kubernetes Docker registry secret: ${ECR_SECRET_NAME}..."
 kubectl create secret docker-registry "${ECR_SECRET_NAME}" \
   --namespace="${NAMESPACE_NAME}" \
   --docker-server="${ECR_REGISTRY}" \
   --docker-username=AWS \
   --docker-password="${ECR_PASSWORD}" \
   --dry-run=client -o yaml | kubectl apply -f -
+
 echo "Secret created or updated."
 
 # Strip usage/help block between ###
@@ -106,31 +112,32 @@ awk '
     }
   }
 
-' "$CONFIG_FILE" | while read -r line; do
+# ' "$CONFIG_FILE" | while read -r line; do
   # Skip empty lines
   [[ -z "$line" ]] && continue
 
+  echo "$line"
   # Parse quoted values safely into positional parameters
   eval set -- $line
 
   name=$1 
-  service=$2
-  cpu_requests=$3
+  service=$2 
+  cpu_requests=$3 
   cpu_limits=$4 
   mem_requests=$5 
   mem_limits=$6 
   pod_requests=$7 
   pod_limits=$8 
-  envs=$9 
-  shift 9
-  serviceport=$1
-  exposeport=$2 
-  public_gateway=$3 
-  allowed_ips=$4 
-  cmd=$5 
-  gitrepo=$6 
-  branch=$7 
-  commit=$8
+  envs=$9
+  serviceport="${10}" 
+  exposeport="${11}" 
+  public_gateway="${12}" 
+  allowed_ips="${13}" 
+  cmd="${14}" 
+  gitrepo="${15}" 
+  branch="${16}" 
+  commit="${17}"
+
 
   echo "Deploying service: $name"
   echo "name: $name"
@@ -142,18 +149,16 @@ awk '
   echo " pod_requests: $pod_requests"
   echo " pod_limits: $pod_limits"
   echo " envs: $envs"
-  echo " port: $port"
+  echo " targetPort: $serviceport"
+  echo " port: $exposeport"
+  echo " public gateway: $public_gateway"
+  echo " allowed_ips: $allowed_ips"
   echo " cmd: $cmd"
-  echo " public_gateway: $public_gateway"
   echo " gitrepo: $gitrepo"
   echo " branch: $branch"
   echo " commit: $commit"
   echo " "
-#   "$DEPLOY_SCRIPT" "$name" "$service" "$cpu_requests" "$cpu_limits" "$mem_requests" \ 
-#                    "$mem_limits" "$pod_requests" "$pod_limits" "$envs" "$serviceport" \ 
-#                    "$exposeport" "$public_gateway" "$allowed_ips" "$cmd" "$gitrepo" \ 
-#                    "$branch" "$commit" "$ACCOUNT_ID" "$AWS_REGION" "$NAMESPACE_NAME" \
-#                    "$ECR_SECRET_NAME" "$VPC_ID" "$DRY_RUN"
+  "$DEPLOY_SCRIPT" "$name" "$service" "$cpu_requests" "$cpu_limits" "$mem_requests" "$mem_limits" "$pod_requests" "$pod_limits" "$envs" "$serviceport" "$exposeport" "$public_gateway" "$allowed_ips" "$cmd" "$gitrepo" "$branch" "$commit" "$ACCOUNT_ID" "$AWS_REGION" "$NAMESPACE_NAME" "$ECR_SECRET_NAME" "$VPC_ID" "$DRY_RUN"
 done
 
 
